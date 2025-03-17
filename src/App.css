@@ -1,0 +1,35 @@
+.container {
+  background-color: rgb(184, 166, 171);
+  width: 100vw;
+  height: 100vh;
+}
+.quiz-container{
+  background-color: rgb(184, 166, 171);
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.quiz-parent{
+  height:65%;
+  width:65%;
+  border-radius:3%;
+  padding:5%;
+  border: 2px solid;
+}
+.quiz-parent h2{
+  margin-top:10%;
+  color: rgb(37, 63, 87);
+}
+
+.quiz-parent button{
+  margin-top:4%;
+  border-radius:30%;
+  color:black;
+}
+.quiz-parent button:hover{
+  background-color: gray;
+  color: white;
+  border:1px solid white;
+}
