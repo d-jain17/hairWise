@@ -1,60 +1,93 @@
 require("dotenv").config();
+console.log("CLIENT_ID:", process.env.CLIENT_ID);
+console.log("CLIENT_SECRET:", process.env.CLIENT_SECRET ? "Loaded" : "Not Loaded");
+console.log("REFRESH_TOKEN:", process.env.REFRESH_TOKEN ? "Loaded" : "Not Loaded");
+console.log("EMAIL:", process.env.EMAIL);
+
 const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
 const { google } = require("googleapis");
 const path = require("path");
+const fs = require("fs");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-let pdfPath = path.join(__dirname, "..", "src", "assets", "dry.pdf");
-let pdfFilename = "dry.pdf";
-
-// Check if file exists
-const fs = require("fs");
-fs.access(pdfPath, fs.constants.F_OK, (err) => {
-  if (err) console.error("PDF File Not Found:", err);
-  else console.log("PDF File Found:", pdfPath);
-});
-
-
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
-const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+let REFRESH_TOKEN = process.env.REFRESH_TOKEN; // Store refresh token
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-async function sendMail(email,answers) {
+/**
+ * ✅ **Function to Automatically Refresh Access Token**
+ * - Refreshes the token if expired
+ * - Updates `.env` (or a database) with a new refresh token
+ */
+async function refreshAccessToken() {
   try {
-    if(answers["hairChemical"]=="yes"){
+    const { credentials } = await oAuth2Client.refreshAccessToken();
+    const newAccessToken = credentials.access_token;
+    const newRefreshToken = credentials.refresh_token || REFRESH_TOKEN; // Use old if new not provided
+
+    console.log("✅ Access Token Refreshed:", newAccessToken);
+    
+    if (credentials.refresh_token) {
+      console.log("✅ New Refresh Token:", newRefreshToken);
+      REFRESH_TOKEN = newRefreshToken; // Update the stored token
+      
+      // **🔥 Save the new refresh token to `.env` (or a database)**
+      const envPath = ".env";
+
+// Read the existing .env file
+    let envContent = fs.readFileSync(envPath, "utf8");
+
+// Update only the REFRESH_TOKEN
+envContent = envContent.replace(/REFRESH_TOKEN=.*/, `REFRESH_TOKEN=${newRefreshToken}`);
+
+// Write back the updated content
+fs.writeFileSync(envPath, envContent, "utf8");
+
+    }
+
+    return newAccessToken;
+  } catch (error) {
+    console.error("❌ Error refreshing access token:", error);
+    throw new Error("Failed to refresh access token");
+  }
+}
+
+/**
+ * ✅ **Function to Send Email**
+ */
+async function sendMail(email, answers) {
+  try {
+    let pdfPath = path.join(__dirname, "..", "src", "assets", "dry.pdf");
+    let pdfFilename = "dry.pdf";
+
+    if (answers["hairChemical"] === "yes") {
       pdfPath = path.join(__dirname, "..", "src", "assets", "colored.pdf");
       pdfFilename = "colored.pdf";
-      console.log("PDF Path:", pdfPath);
-    }
-    else if(answers["hairConcern"]=="Hair fall/thinning"){
+    } else if (answers["hairConcern"] === "Hair fall/thinning") {
       pdfPath = path.join(__dirname, "..", "src", "assets", "hairfall.pdf");
       pdfFilename = "hairfall.pdf";
-      console.log("PDF Path:", pdfPath);
-    }
-    else if(answers["hairScalp"]=="Oily"){
+    } else if (answers["hairScalp"] === "Oily") {
       pdfPath = path.join(__dirname, "..", "src", "assets", "oily.pdf");
       pdfFilename = "oily.pdf";
-      console.log("PDF Path:", pdfPath);
-    }
-    else if(answers["hairScalp"]=="Dry"){
+    } else if (answers["hairScalp"] === "Dry") {
       pdfPath = path.join(__dirname, "..", "src", "assets", "dry.pdf");
       pdfFilename = "dry.pdf";
-      console.log("PDF Path:", pdfPath);
-    }
-    else if(answers["hairType"]=="Curly"){
+    } else if (answers["hairType"] === "Curly") {
       pdfPath = path.join(__dirname, "..", "src", "assets", "curly.pdf");
       pdfFilename = "curly.pdf";
-      console.log("PDF Path:", pdfPath);
     }
-    const accessToken = await oAuth2Client.getAccessToken();
+
+    // ✅ Get a Fresh Access Token
+    const accessToken = await refreshAccessToken();
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -64,15 +97,15 @@ async function sendMail(email,answers) {
         clientId: CLIENT_ID,
         clientSecret: CLIENT_SECRET,
         refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken.token,
+        accessToken: accessToken,
       },
     });
 
     const mailOptions = {
       from: `hair-care-test <${process.env.EMAIL}>`,
       to: email,
-      subject: "Test Email",
-      text: "Hello! This is a test email from your React app.",
+      subject: "Your Personalized Hair Care Routine",
+      text: "Hello! Here is your customized hair care routine based on your responses.",
       attachments: [
         {
           filename: pdfFilename,
@@ -83,20 +116,28 @@ async function sendMail(email,answers) {
     };
 
     const result = await transporter.sendMail(mailOptions);
+    console.log("✅ Email Sent Successfully:", result.messageId);
     return result;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("❌ Error sending email:", error);
+    throw new Error("Failed to send email");
   }
 }
 
+/**
+ * ✅ **API Endpoint: Send Email**
+ */
 app.post("/send-email", async (req, res) => {
-  const { email,answers } = req.body;
+  const { email, answers } = req.body;
+
   try {
-    await sendMail(email,answers);
-    return res.json({ message: "Email sent successfully!" });
+    await sendMail(email, answers);
+    return res.json({ message: "✅ Email sent successfully!" });
   } catch (error) {
-    return res.status(500).json({ message: "Error sending email" });
+    return res.status(500).json({ message: "❌ Error sending email" });
   }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+// ✅ **Start Express Server**
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
