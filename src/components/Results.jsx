@@ -8,6 +8,7 @@ function Results({answers}) {
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
     const navigate=useNavigate()
+    const API_URL = "https://yourbackend.onrender.com";
     const sendEmail = async () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Simple email regex
 
