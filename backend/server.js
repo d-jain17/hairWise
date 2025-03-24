@@ -38,19 +38,8 @@ async function refreshAccessToken() {
     
     if (credentials.refresh_token) {
       console.log("✅ New Refresh Token:", newRefreshToken);
-      REFRESH_TOKEN = newRefreshToken; // Update the stored token
-      
-      // **🔥 Save the new refresh token to `.env` (or a database)**
-      const envPath = ".env";
-
-// Read the existing .env file
-    let envContent = fs.readFileSync(envPath, "utf8");
-
-// Update only the REFRESH_TOKEN
-envContent = envContent.replace(/REFRESH_TOKEN=.*/, `REFRESH_TOKEN=${newRefreshToken}`);
-
-// Write back the updated content
-fs.writeFileSync(envPath, envContent, "utf8");
+      REFRESH_TOKEN = newRefreshToken;
+      oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
     }
 
