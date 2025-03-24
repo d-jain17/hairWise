@@ -196,7 +196,7 @@ function App() {
   };
   
   return (
-    <Router>
+    <Router  basename="/hairWise">
       <div className='container'>
         <Routes>
           <Route path="/" element={<Home />} />
