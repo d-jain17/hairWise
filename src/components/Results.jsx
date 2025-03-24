@@ -8,7 +8,7 @@ function Results({answers}) {
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
     const navigate=useNavigate()
-    const API_URL = "https://yourbackend.onrender.com";
+    const API_URL = "https://hairwise.onrender.com";
     const sendEmail = async () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Simple email regex
 
@@ -24,7 +24,7 @@ function Results({answers}) {
     
       try {
         console.log("heloo")
-        const response = await axios.post("http://localhost:5000/send-email", { email,answers });
+        const response = await axios.post(`${API_URL}/send-email`, { email, answers });
         setMessage(response.data.message);
         navigate('/success')
       } catch (error) {
